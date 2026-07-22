@@ -63,6 +63,39 @@ details[open] summary::after{content:"–"}
 .rules p{margin:0 0 9px}
 .foot{text-align:center;font-size:12.5px;color:var(--mut);line-height:1.5;padding:0 6px}
 .foot b{color:var(--ink);font-weight:600}
+
+/* scoreboard */
+.sum{margin-left:auto;margin-right:10px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;
+  color:var(--accent);text-transform:none;max-width:58%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sb{padding:2px 14px 16px}
+.sb-add{display:flex;gap:8px;margin:6px 0 12px}
+.sb-add input{flex:1;min-width:0;font-family:var(--disp);font-size:16px;color:var(--ink);
+  background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:11px 13px;outline:none}
+.sb-add input:focus{border-color:var(--accent)}
+.pill-btn{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;border:none;border-radius:11px;padding:0 16px;color:#0a0713;background:var(--accent)}
+.plist{display:flex;flex-direction:column;gap:7px}
+.prow{display:flex;align-items:center;gap:9px;background:var(--card2);border:1px solid var(--line);
+  border-radius:12px;padding:8px 10px}
+.prow.lead{border-color:color-mix(in srgb,var(--cyan) 50%,transparent)}
+.prow.lose{border-color:color-mix(in srgb,var(--coral) 60%,transparent)}
+.prow .badge{font-size:15px;width:18px;text-align:center}
+.prow .pname{flex:1;min-width:0;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step{display:flex;align-items:center;gap:5px}
+.step button{width:33px;height:33px;border-radius:9px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);font-size:20px;font-weight:700;cursor:pointer;line-height:1;padding:0}
+.step .plus{background:var(--accent);color:#0a0713;border-color:var(--accent)}
+.step .dcount{font-family:var(--mono);font-size:16px;color:var(--ink);min-width:22px;text-align:center}
+.step .x{width:26px;height:33px;color:var(--mut);font-size:13px;background:transparent;border:none}
+.standings{margin:13px 2px 2px;font-family:var(--mono);font-size:12px;letter-spacing:.03em;
+  color:var(--mut);text-align:center;line-height:1.9}
+.standings b{color:var(--ink)}
+.sb-tools{display:flex;gap:8px;margin-top:12px}
+.ghost{flex:1;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--mut);border-radius:10px;padding:10px}
+.ghost:active{background:var(--card2)}
+.sb-note{margin:11px 2px 0;font-size:12.5px;line-height:1.5;color:var(--mut)}
+.sb-note b{color:var(--ink)}
 </style>
 
 <div class="app">
@@ -83,6 +116,23 @@ details[open] summary::after{content:"–"}
   </div>
 
   <button class="draw" id="draw" onclick="draw()">DRAW ▸</button>
+
+  <details id="score">
+    <summary><span>🏆 Scoreboard</span><span id="scoreSum" class="sum">tap to add players</span></summary>
+    <div class="sb">
+      <div class="sb-add">
+        <input id="pName" type="text" autocomplete="off" autocapitalize="words" placeholder="Add a player…" maxlength="14" onkeydown="if(event.key==='Enter')addPlayer()">
+        <button class="pill-btn" onclick="addPlayer()">Add</button>
+      </div>
+      <div id="plist" class="plist"></div>
+      <div id="standings" class="standings"></div>
+      <div class="sb-tools">
+        <button class="ghost" onclick="newRound()">New round</button>
+        <button class="ghost" onclick="clearPlayers()">Clear all</button>
+      </div>
+      <p class="sb-note">Someone drinks? Tap their <b>+</b>. Fewest drinks <b>wins</b> 🏆 · most drinks is the <b>loser</b> 💀</p>
+    </div>
+  </details>
 
   <details id="howMirror">
     <summary>How to play Mirror</summary>
@@ -260,4 +310,46 @@ function draw(){
   void p.offsetWidth; p.classList.add('pop');
   document.getElementById('count').textContent='#'+drawn;
 }
+
+/* ---- scoreboard ---- */
+var players=[];
+function saveP(){ try{ localStorage.setItem('pd_players', JSON.stringify(players)); }catch(e){} }
+function loadP(){ try{ players=JSON.parse(localStorage.getItem('pd_players'))||[]; }catch(e){ players=[]; } }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function addPlayer(){
+  var el=document.getElementById('pName'); var n=(el.value||'').trim();
+  if(!n) return;
+  players.push({n:n,d:0}); el.value=''; saveP(); renderScore(); el.focus();
+}
+function chg(i,delta){ if(!players[i])return; players[i].d=Math.max(0,players[i].d+delta); saveP(); renderScore(); }
+function delPlayer(i){ players.splice(i,1); saveP(); renderScore(); }
+function newRound(){ players.forEach(function(p){p.d=0;}); saveP(); renderScore(); }
+function clearPlayers(){ if(players.length && !confirm('Remove all players?'))return; players=[]; saveP(); renderScore(); }
+function renderScore(){
+  var list=document.getElementById('plist'); var stand=document.getElementById('standings'); var sum=document.getElementById('scoreSum');
+  var ds=players.map(function(p){return p.d;});
+  var mx=ds.length?Math.max.apply(null,ds):0, mn=ds.length?Math.min.apply(null,ds):0;
+  var spread=players.length>=2 && mx>mn;
+  list.innerHTML=players.map(function(p,i){
+    var cls='', badge='•';
+    if(spread && p.d===mx){ cls='lose'; badge='💀'; }
+    else if(spread && p.d===mn){ cls='lead'; badge='🏆'; }
+    return '<div class="prow '+cls+'">'
+      +'<span class="badge">'+badge+'</span>'
+      +'<span class="pname">'+esc(p.n)+'</span>'
+      +'<div class="step">'
+        +'<button onclick="chg('+i+',-1)" aria-label="minus">–</button>'
+        +'<span class="dcount">'+p.d+'</span>'
+        +'<button class="plus" onclick="chg('+i+',1)" aria-label="drink">+</button>'
+        +'<button class="x" onclick="delPlayer('+i+')" aria-label="remove">✕</button>'
+      +'</div></div>';
+  }).join('');
+  if(players.length===0){ stand.innerHTML=''; sum.textContent='tap to add players'; return; }
+  if(!spread){ stand.innerHTML='<b>'+players.length+'</b> in · all even so far'; sum.textContent=players.length+(players.length===1?' player':' players'); return; }
+  var lose=players.filter(function(p){return p.d===mx;}).map(function(p){return esc(p.n);});
+  var lead=players.filter(function(p){return p.d===mn;}).map(function(p){return esc(p.n);});
+  stand.innerHTML='🏆 Winning: <b>'+lead.join(', ')+'</b> ('+mn+')<br>💀 Losing: <b>'+lose.join(', ')+'</b> ('+mx+')';
+  sum.textContent='💀 '+lose[0]+' · '+mx;
+}
+loadP(); renderScore();
 </script>
