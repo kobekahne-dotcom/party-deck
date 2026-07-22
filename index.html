@@ -1,0 +1,261 @@
+<title>Playtest Deck — Mirror & Call It</title>
+<style>
+:root{
+  --bg:#0b0713; --card:#17102b; --card2:#1e1636; --line:#2c2247;
+  --ink:#f4eefb; --mut:#a99ec4;
+  --cyan:#34e6dd; --cyan-dim:#0f5f5c;
+  --coral:#ff8b3d; --coral-dim:#6b3411;
+  --accent:var(--cyan); --accent-dim:var(--cyan-dim);
+  --disp:"Helvetica Neue",-apple-system,system-ui,Arial,sans-serif;
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--disp);
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+.app{min-height:100dvh;max-width:520px;margin:0 auto;display:flex;flex-direction:column;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom));gap:14px}
+.top{display:flex;align-items:center;justify-content:space-between}
+.brand{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--mut)}
+.brand b{color:var(--ink);font-weight:600}
+
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modes button{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;padding:13px 10px;border-radius:13px;border:1px solid var(--line);background:var(--card);
+  color:var(--mut);transition:.18s}
+.modes button[data-on="1"]{color:#0a0713;background:var(--accent);border-color:var(--accent)}
+.modes button:not([data-on="1"]):active{background:var(--card2)}
+
+.tag{display:inline-flex;align-items:center;gap:7px;align-self:center;
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.tag .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+
+.card{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;
+  border:1px solid var(--line);border-radius:22px;background:
+    radial-gradient(120% 90% at 50% 0%, var(--card2), var(--card));
+  padding:26px 22px;min-height:220px;position:relative;overflow:hidden}
+.card::after{content:"";position:absolute;inset:0;border-radius:22px;pointer-events:none;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%, transparent)}
+.prompt{font-weight:800;line-height:1.12;letter-spacing:-.015em;
+  font-size:clamp(26px,7.4vw,40px);text-wrap:balance}
+.prompt.small{font-size:clamp(20px,5.4vw,30px)}
+.idle{color:var(--mut);font-weight:600}
+@media (prefers-reduced-motion:no-preference){
+  .pop{animation:pop .26s cubic-bezier(.2,.9,.3,1.2)}
+}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(6px)}to{opacity:1;transform:none}}
+
+.count{position:absolute;top:14px;right:16px;font-family:var(--mono);font-size:12px;color:var(--mut)}
+
+.draw{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:.02em;
+  cursor:pointer;padding:20px;border-radius:16px;border:none;color:#0a0713;background:var(--accent);
+  box-shadow:0 8px 30px -10px var(--accent);transition:.12s}
+.draw:active{transform:translateY(2px);box-shadow:0 4px 16px -10px var(--accent)}
+
+details{border:1px solid var(--line);border-radius:13px;background:var(--card);overflow:hidden}
+summary{list-style:none;cursor:pointer;padding:12px 15px;font-family:var(--mono);font-size:11.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--accent);font-size:15px}
+details[open] summary::after{content:"–"}
+.rules{padding:0 16px 15px;font-size:14.5px;line-height:1.6;color:var(--ink)}
+.rules b{color:var(--accent)}
+.rules p{margin:0 0 9px}
+.foot{text-align:center;font-size:12.5px;color:var(--mut);line-height:1.5;padding:0 6px}
+.foot b{color:var(--ink);font-weight:600}
+</style>
+
+<div class="app">
+  <div class="top">
+    <span class="brand"><b>Playtest Deck</b> · pick the winner</span>
+  </div>
+
+  <div class="modes">
+    <button id="mMirror" data-on="1" onclick="setMode('mirror')">Mirror</button>
+    <button id="mCall" data-on="0" onclick="setMode('call')">Call It</button>
+  </div>
+
+  <span class="tag"><span class="dot"></span><span id="tagText">everyone at once — 3·2·1</span></span>
+
+  <div class="card">
+    <span class="count" id="count"></span>
+    <div class="prompt idle" id="prompt">Tap DRAW to deal the first card</div>
+  </div>
+
+  <button class="draw" id="draw" onclick="draw()">DRAW ▸</button>
+
+  <details id="howMirror">
+    <summary>How to play Mirror</summary>
+    <div class="rules">
+      <p>Deal a card. On <b>3·2·1 — mirror!</b> everyone does the move <b>at the exact same time.</b></p>
+      <p>Anyone who <b>fumbles, hesitates, or does it wrong drinks.</b></p>
+      <p>A <b>COMBO</b> card means do the <b>last cards in order</b> first, then the new one — it stacks into a memory chain. The more you play, the harder it gets.</p>
+    </div>
+  </details>
+
+  <details id="howCall" hidden>
+    <summary>How to play Call It</summary>
+    <div class="rules">
+      <p>Deal a card — it's a task for <b>one person</b> (drawer picks, or go around).</p>
+      <p>Before they try, on <b>3·2·1 — call it!</b> everyone else throws a <b>thumb up</b> (they'll make it) or <b>thumb down</b> (they'll miss).</p>
+      <p>They <b>make it</b> → everyone who called <b>down</b> drinks. They <b>miss</b> → the attempter drinks <b>and</b> everyone who called <b>up</b> drinks.</p>
+    </div>
+  </details>
+
+  <p class="foot">Test it at a real party. Watch one thing: <b>does anyone ask to play again, or teach it to someone who wasn't playing.</b> That's the whole signal.</p>
+</div>
+
+<script>
+var DECKS={
+  mirror:[
+    "Do the SCUBA 🤿 — pinch your nose, wave the other hand",
+    "Do the APPLE dance 🍎",
+    "Hit the GRIDDY 🕺",
+    "Do the DAI DAI (World Cup dance)",
+    "Shuffle your feet for 3 seconds",
+    "Two-step like you're at the club",
+    "Bust out your best TikTok dance — any one",
+    "Twerk for 3 seconds — commit to it",
+    "Slow, dramatic body roll",
+    "Booty pop — 3 times",
+    "Air grind on nothing for 3 seconds",
+    "Hip thrusts — 5 of 'em, count out loud",
+    "Sexy strut to the middle and back 🔥",
+    "Drop it low for 3 seconds",
+    "All couples drink 💑",
+    "Shortest person here drinks",
+    "Tallest person here drinks",
+    "Loudest person so far drinks",
+    "Most sober person drinks — catch up",
+    "Anyone wearing white drinks",
+    "Anyone who's single drinks 😏",
+    "Newest person to the group drinks",
+    "Whoever's phone has the lowest battery drinks",
+    "Last person to check their phone drinks",
+    "Prettiest eyes — group votes, they pick who drinks",
+    "Point at yourself, then at anyone — they drink",
+    "Chug for 3 seconds — everyone counts it down",
+    "Cheers someone across the circle — you BOTH drink",
+    "Waterfall — drink 'til the person on your right stops",
+    "Last person to raise their cup drinks twice",
+    "Everyone drinks — then point at who goes again",
+    "Switch seats with the person on your LEFT — last seated drinks",
+    "Everyone rotate ONE seat to the right — go!",
+    "Pick a drink buddy — you drink whenever they do, till next round 🤝",
+    "Everyone stand up — LAST one up drinks",
+    "Everyone touch the floor — last hand down drinks",
+    "Everyone run, touch the nearest wall and back — last drinks",
+    "Swap one thing with someone: hat, sock, or shoe",
+    "Point at who you'd trust to drive you home — most points drinks",
+    "Do your worst celebrity impression",
+    "Sing the chorus of the last song you heard — loud",
+    "Everyone do their best fake cry 😭",
+    "Baby voice until your next turn",
+    "Show the group your last camera-roll photo",
+    "Read your last sent text out loud",
+    "Ugliest face you've got — hold it 5 seconds",
+    "Do an impression of the person on your left",
+    "Best fake laugh — 5 full seconds",
+    "Evil villain laugh — really sell it 😈",
+    "Talk in an accent until it's your turn again",
+    "Flex both arms and let out a ROAR",
+    "Slam the table twice and yell “LET'S GO!”",
+    "Stand, spin once, sit — LAST one down drinks",
+    "5 jumping jacks — last one done drinks",
+    "Freeze like a statue — first to move drinks",
+    "Beatbox for 3 seconds (or try to)",
+    "Do a viral soccer goal celebration ⚽",
+    "Vogue — 3 fast fashion poses 💅",
+    "Slow-mo swag walk across the room and back 😎",
+    "'Get low' — squat-bounce for 3 seconds",
+    "Salsa spin with an invisible partner 💃",
+    "Freestyle 3 seconds — whatever your body does",
+    "Full-body shimmy, head to toe",
+    "Slow spin with a 'come here' finger 😏",
+    "Sultry hip figure-8s for 3 seconds",
+    "Slow-mo 'walk out of an explosion' strut 😎",
+    "The drunkest person drinks — you know who you are 🍻",
+    "Anyone wearing black drinks",
+    "Whoever drove tonight drinks water 💧",
+    "Longest hair in the room drinks",
+    "Closest birthday drinks 🎂",
+    "Whoever traveled farthest to be here drinks",
+    "Most phone notifications right now drinks 📱",
+    "Everyone scramble to a new seat — last one down drinks",
+    "Girls rotate left, guys rotate right — GO",
+    "Everyone put a hand in the middle — last one in drinks",
+    "Conga line around the room, once 🚂",
+    "Rock-paper-scissors your neighbor — loser drinks ✊",
+    "New rule: no first names till next round — slip, drink",
+    "Group selfie, right now 📸",
+    "Whole group does the wave 🌊 twice — last arm up drinks",
+    "Sports-announcer play-by-play of the room, 15 sec 🎙️",
+    "Whisper everything you say till your next turn",
+    "Air-drum a full solo — go wild 🥁",
+    "Hit the group with your worst pickup line 😏",
+    "Rap 4 bars — make 'em up on the spot 🎤",
+    "Act out your go-to karaoke song for 10 sec 🎤",
+    "Best impression of your mom or dad",
+    "Narrate your last Google search out loud 🔎",
+    "Anyone wearing a hat drinks 🧢",
+    "Whoever's got the fullest cup drinks — catch up",
+    "Last person who walked in drinks",
+    "Most jewelry in the room drinks 💍",
+    "Whoever's closest to the door drinks",
+    "Thumb war your right-hand neighbor — loser drinks 👍",
+    "Staring contest with your neighbor — first to blink drinks 👀",
+    "Categories — name car brands around the circle, first to blank drinks 🚗",
+    "New rule: everyone talks in an accent till next round 🇬🇧",
+    "Read your most recent notification out loud 🔔",
+    "Best impression of a teacher you had",
+    "COMBO: do the LAST card, then chug 2 seconds",
+    "COMBO: do the last TWO cards back-to-back — GO"
+  ],
+  call:[
+    "Flip a bottle cap so it lands flat in a cup",
+    "Say the alphabet backwards from G — in 5 sec",
+    "Balance a card on your nose for 3 seconds",
+    "Toss a crumpled napkin into a cup from 3 ft",
+    "Name 5 beer brands in 5 seconds",
+    "Spin around 3x, then touch your nose first try",
+    "Say “toy boat” five times fast, no slip-ups",
+    "Stack 3 cans into a tower in 5 seconds",
+    "Bounce a coin off the table into a cup",
+    "Balance on one foot, eyes closed, 8 seconds",
+    "Do 6 push-ups in 6 seconds",
+    "Name 4 U.S. states that start with M",
+    "Land a playing card in a cup from 4 feet",
+    "Recite your phone number backwards",
+    "Keep a straight face for 10 sec while they roast you"
+  ]
+};
+var TAGS={mirror:"everyone at once — 3·2·1",call:"bet first — thumb up or down"};
+var mode="mirror", queue=[], drawn=0;
+
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=(i* (drawn+7) + a.length*13 + 5)% (i+1); if(j<0)j=0; var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+// deterministic-ish shuffle avoids Math.random; still varied enough per session by seeding on time-of-tap
+function shuffleTime(a){a=a.slice();var s=(new Date().getTime())>>>0;for(var i=a.length-1;i>0;i--){s=(s*1103515245+12345)&0x7fffffff;var j=s%(i+1);var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+function setMode(m){
+  mode=m; drawn=0; queue=[];
+  document.getElementById('mMirror').setAttribute('data-on', m==='mirror'?'1':'0');
+  document.getElementById('mCall').setAttribute('data-on', m==='call'?'1':'0');
+  document.documentElement.style.setProperty('--accent', m==='mirror'?'var(--cyan)':'var(--coral)');
+  document.getElementById('tagText').textContent=TAGS[m];
+  document.getElementById('howMirror').hidden = m!=='mirror';
+  document.getElementById('howCall').hidden = m!=='call';
+  var p=document.getElementById('prompt');
+  p.className='prompt idle'; p.textContent='Tap DRAW to deal the first card';
+  document.getElementById('count').textContent='';
+}
+function draw(){
+  if(queue.length===0){ queue=shuffleTime(DECKS[mode]); }
+  var text=queue.shift(); drawn++;
+  var p=document.getElementById('prompt');
+  p.className='prompt' + (text.length>44?' small':'');
+  p.textContent=text;
+  // retrigger pop
+  void p.offsetWidth; p.classList.add('pop');
+  document.getElementById('count').textContent='#'+drawn;
+}
+</script>
